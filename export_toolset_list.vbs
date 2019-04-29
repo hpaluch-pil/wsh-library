@@ -75,10 +75,10 @@ Set csvFile = fso.CreateTextFile(WScript.Arguments.Item(ArgCsvNameIndex), True)
 ' from https://www.mztools.com/Articles/2005/MZ2005005.aspx
 Dim objDTE
 ' Creates an instance of the Visual Studio xxxx DTE
-'Set objDTE = CreateObject(VsObjectName)
+Set objDTE = CreateObject(VsObjectName)
 
 ' connect to existing VS xxxx
-Set objDTE = GetObject(,VsObjectName)
+'Set objDTE = GetObject(,VsObjectName)
  
 'Wscript.Echo("VS Version: " & objDTE.Version)
 
