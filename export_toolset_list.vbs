@@ -15,6 +15,20 @@ Const VsObjectName = "VisualStudio.DTE.12.0"
 ' CSV output separator. Typically "," or ";"
 Const CsvSep = ","
 
+' Simple map of toolset versions (incomplete)
+' Map from: https://marcofoco.com/microsoft-visual-c-version-map/
+Dim ToolsetDict
+Set ToolsetDict = CreateObject("Scripting.Dictionary")
+Call ToolsetDict.Add("v80","Visual Studio 2005")
+Call ToolsetDict.Add("v90","Visual Studio 2008")
+Call ToolsetDict.Add("v100","Visual Studio 2010")
+Call ToolsetDict.Add("v110","Visual Studio 2012")
+Call ToolsetDict.Add("v120","Visual Studio 2013")
+Call ToolsetDict.Add("v140","Visual Studio 2015")
+Call ToolsetDict.Add("v141","Visual Studio 2017")
+Call ToolsetDict.Add("v142","Visual Studio 2019")
+
+
 Dim fso
 Set fso = CreateObject("Scripting.FileSystemObject")
 
@@ -31,6 +45,7 @@ Sub CheckExtensionOrDie(fileName,ext)
         WScript.Quit(1)
     End If
 End Sub
+
 
 Sub DumpProjectInfo(ByRef proj, ByRef csvFile)
     ' from https://kobyk.wordpress.com/2011/11/26/modifying-a-visual-c-2010-projects-platform-toolset-programmatically-with-ivcrulepropertystorage/
@@ -51,8 +66,17 @@ Sub DumpProjectInfo(ByRef proj, ByRef csvFile)
             WScript.Echo("Unable to split '" & c.Name & "' with '|' -  Array count  " & UBound(cpCombo)+1 & " <> 2" )
             WScript.Quit(1)
         End If
+
+        Dim ToolsetName
+        ToolsetName="N/A"
+
+        If ToolsetDict.Exists(toolset) Then
+            ToolsetName = ToolsetDict.Item(toolset)
+        End If
+
         ' CSV output
-        csvFile.WriteLine(proj.Name & CsvSep & cpCombo(0) & CsvSep & cpCombo(1) & CsvSep & toolset )
+        csvFile.WriteLine(proj.Name & CsvSep & cpCombo(0) & CsvSep & cpCombo(1) _
+                 & CsvSep & toolset & CsvSep & ToolsetName )
     Next
 End Sub
 
@@ -91,7 +115,8 @@ Set sol = objDTE.Solution
 sol.Open(WScript.Arguments.Item(ArgSlnIndex))
 
 
-csvFile.WriteLine("Project" & CsvSep & "Configuration" & CsvSep & "Platform" & CsvSep & "Toolset")
+csvFile.WriteLine("Project" & CsvSep & "Configuration" & CsvSep & "Platform" _
+        & CsvSep & "Toolset" & CsvSep & "Toolset Name")
 Dim proj
 For Each proj in sol.Projects
 	'WScript.Echo("Project: '" & proj.Name & "' Kind: " & proj.Kind)
