@@ -84,7 +84,17 @@ For Each sc in sb.SolutionConfigurations
 	    'WScript.Echo("    " & ssc.ProjectName & " " & ssc.ConfigurationName & "|" & ssc.PlatformName & " ShouldBuild? " & ssc.ShouldBuild)
 	    Dim Mismatch
 	    Mismatch = False
-	    If sc.Name <> ssc.ConfigurationName or sc.PlatformName <> ssc.PlatformName Then
+	    ' make 'Win32' equivalent to 'x86'
+	    Dim NormSolPlat, NormProjPlat
+	    NormSolPlat = sc.PlatformName
+	    if NormSolPlat = "Win32" Then
+		    NormSolPlat = "x86"
+	    End IF
+	    NormProjPlat = ssc.PlatformName
+	    if NormProjPlat = "Win32" Then
+		    NormProjPlat = "x86"
+	    End IF
+	    If sc.Name <> ssc.ConfigurationName or NormSolPlat <> NormProjPlat Then
 		Mismatch = True
 	    End If
 	    csvFile.WriteLine( ssc.ProjectName & CsvSep  & sc.Name & CsvSep & ssc.ConfigurationName _
