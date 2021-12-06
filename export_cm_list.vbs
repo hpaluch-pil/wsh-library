@@ -1,4 +1,4 @@
-' Simple VBScript to Export configuration manager Lists/Properties
+' Simple VBScript to Export configuration manager Platform/Configuration mismatches
 ' run as:
 ' cscript export_cm_list.vbs my_solution_wiht_cpp_projects.sln output.csv
 
@@ -16,37 +16,8 @@ Const VsObjectName = "VisualStudio.DTE.12.0"
 ' CSV output separator. Typically "," or ";"
 Const CsvSep = ","
 
-' Simple map of toolset versions (incomplete)
-' Map from: https://marcofoco.com/microsoft-visual-c-version-map/
-Dim ToolsetDict
-Set ToolsetDict = CreateObject("Scripting.Dictionary")
-Call ToolsetDict.Add("v80","Visual Studio 2005")
-Call ToolsetDict.Add("v90","Visual Studio 2008")
-Call ToolsetDict.Add("v100","Visual Studio 2010")
-Call ToolsetDict.Add("v110","Visual Studio 2012")
-Call ToolsetDict.Add("v120","Visual Studio 2013")
-Call ToolsetDict.Add("v140","Visual Studio 2015")
-Call ToolsetDict.Add("v141","Visual Studio 2017")
-Call ToolsetDict.Add("v142","Visual Studio 2019")
-
-
 Dim fso
 Set fso = CreateObject("Scripting.FileSystemObject")
-
-Sub Odpad
-	Dim ci
-	For each ci in cm.ConfigurationRowNames
-		WScript.Echo("CI: " & ci )
-	Next
-
-	Dim i
-	For i = 1 To cm.Count
-		WScript.Echo("I " & i &  ": " & cm.Item(i).ConfigurationName & "|" & cm.Item(i).PlatformName & " Build? " & cm.Item(i).IsBuildable)
-		Dim pp
-		Set pp = cm.Item(i).Owner
-		'WScript.Echo("Parent proj: " & pp.Name)
-	Next
-End Sub
 
 Sub FileExistsOrDie(fileName)
     if Not fso.FileExists(fileName) Then
@@ -62,39 +33,6 @@ Sub CheckExtensionOrDie(fileName,ext)
     End If
 End Sub
 
-
-Sub DumpProjectInfo(ByRef proj, ByRef csvFile)
-    ' from https://kobyk.wordpress.com/2011/11/26/modifying-a-visual-c-2010-projects-platform-toolset-programmatically-with-ivcrulepropertystorage/
-    Dim c
-    For Each c in proj.Object.Configurations
-        'Wscript.Echo("   c name: " & c.Name)
-        Dim tsRule
-        Set tsRule = c.Rules.Item("ConfigurationGeneral")
-
-        Dim toolset
-        toolset = tsRule.GetUnevaluatedPropertyValue("PlatformToolset")
-
-        'WScript.Echo("   Toolset: " & toolset)
-
-        Dim cpCombo
-        cpCombo = Split(c.Name,"|")
-        If UBound(cpCombo) <> 1 Then
-            WScript.Echo("Unable to split '" & c.Name & "' with '|' -  Array count  " & UBound(cpCombo)+1 & " <> 2" )
-            WScript.Quit(1)
-        End If
-
-        Dim ToolsetName
-        ToolsetName="N/A"
-
-        If ToolsetDict.Exists(toolset) Then
-            ToolsetName = ToolsetDict.Item(toolset)
-        End If
-
-        ' CSV output
-        csvFile.WriteLine(proj.Name & CsvSep & cpCombo(0) & CsvSep & cpCombo(1) _
-                 & CsvSep & toolset & CsvSep & ToolsetName )
-    Next
-End Sub
 
 If WScript.Arguments.Count <> 2 Then
     WScript.Echo("Usage: " & WScript.ScriptName & " my_solution_file.sln output.csv")
@@ -133,6 +71,9 @@ sol.Open(WScript.Arguments.Item(ArgSlnIndex))
 Dim sb
 Set sb = sol.SolutionBuild
 
+csvFile.WriteLine("Project" & CsvSep & "Solution Conf" & CsvSep & "Project Conf" _
+        & CsvSep & "Solution Platform" & CsvSep & "Project Platform" & CsvSep & "Build" & CsvSep & "Mismatch")
+
 Dim sc
 For Each sc in sb.SolutionConfigurations
 	' PlatformName is
@@ -140,12 +81,16 @@ For Each sc in sb.SolutionConfigurations
 	WScript.Echo("SC: '" & sc.Name & "|" & sc.PlatformName )
 	Dim ssc
 	For Each ssc in sc.SolutionContexts
-	    WScript.Echo("    " & ssc.ProjectName & " " & ssc.ConfigurationName & "|" & ssc.PlatformName & " ShouldBuild? " & ssc.ShouldBuild)
+	    'WScript.Echo("    " & ssc.ProjectName & " " & ssc.ConfigurationName & "|" & ssc.PlatformName & " ShouldBuild? " & ssc.ShouldBuild)
+	    Dim Mismatch
+	    Mismatch = False
+	    If sc.Name <> ssc.ConfigurationName or sc.PlatformName <> ssc.PlatformName Then
+		Mismatch = True
+	    End If
+	    csvFile.WriteLine( ssc.ProjectName & CsvSep  & sc.Name & CsvSep & ssc.ConfigurationName _
+	                  & CsvSep & sc.PlatformName & CsvSep & ssc.PlatformName &  CsvSep & ssc.ShouldBuild _
+			  & CsvSep & Mismatch )
 	Next
-	WScript.Echo("  ")
 Next
-
-csvFile.WriteLine("Project" & CsvSep & "Configuration" & CsvSep & "Platform" _
-        & CsvSep & "Toolset" & CsvSep & "Toolset Name")
 
 csvFile.Close
